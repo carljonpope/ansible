@@ -1,0 +1,42 @@
+---
+- block:
+  
+  - name: Find files with modified date > file_age
+    win_find:
+      paths: "{{ file_path }}"
+      age: "{{ file_age }}"
+    register: oldfiles
+    
+  - name: Delete all files with modified date > file_age
+    win_file:
+      path: "{{ item.path }}"
+      state: absent
+    with_items: "{{ oldfiles.files }}"
+
+
+
+  rescue:
+    - name: Send email when errors
+      mail:
+        host: appsmtp.amtrustgroup.com
+        port: 25
+        to: "{{ email_destination }}"
+        from: "admin@ansible.amtrustservices.com"
+        subject: "Ansible file delete error"
+        body: "{{ lookup('template', 'templates/error-email-template.j2') }}"
+      delegate_to: localhost
+
+    - name: Create service now ticket
+      snow_record:
+        username: "{{ snow_username }}"
+        password: "{{ snow_password }}"
+        instance: "{{ snow_instance }}"
+        state: present
+        data:
+          short_description: "Ansible file delete error"
+          description: "{{ lookup('template', 'templates/error-email-template.j2') }}"
+          priority: 3
+          state: 0
+        table: u_request
+      delegate_to: localhost
+      register: newreq
