@@ -1,0 +1,5 @@
+---
+- hosts: "{{ hostgroup | default('automation_jumpbox') }}"
+
+  roles:
+    - role: role-delete-old-files
